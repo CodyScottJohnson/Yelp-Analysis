@@ -1,30 +1,84 @@
 ---
-title: "Yelp Analysis"
-author: "Cody Johnson"
-date: "3/5/2019"
-output: html_document
+output: 
+  html_notebook: 
+    toc: yes
 ---
-
+<img src="img/yelp-logo.png"></img>
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+list.of.packages <- c('tidyr','plotly','mlbench','caret','ROCR','e1071','ggplot2','dataPreparation')
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages)
+lapply(list.of.packages, require, character.only=TRUE)
 ```
 
-## R Markdown
+### Read in Data
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 
-```{r cars}
-summary(cars)
+```{r data}
+data<-read.csv("data/yelp_data_reformat.csv")
 ```
 
-## Including Plots
+## Filter to look at unique businesses
 
-You can also embed plots, for example:
+>Filtering the data down so we have one row per business and don't risk double counting or skewing results while analyzing the affect of business characteristics on their average rateing
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+
+
+```{r}
+business_data <- data %>%
+    select(Business...Id,Business...Stars,Business...Review.Count,Business...Wi.Fi,Business...Waiter.Service,Business...Take.out,Business...Price.Range,Business...Parking,Business...Noise.Level,Business...Good.For.Kids,Business...Accepts.Credit.Cards,Business...Ages.Allowed,Business...Has.TV,Business...Categories) %>%
+    mutate(Price.Range = factor(Business...Price.Range)) %>%
+    distinct()
+
+
+head(business_data)
+```
+### Clean Data
+>Perform some basic data cleaning and validations
+
+```{r}
+constant_cols <- whichAreConstant(business_data)
+double_cols <- whichAreInDouble(business_data)
+bijections_cols <- whichAreBijection(business_data)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+### Key metrics
+> Perhaps more interesting than reviews to both individual business and yelp as a platform  is how reviews drive traffic and patronage. While the connection may seem obvious between high reviews and patronage/interaction it would be ideal to find a metric that was a closer proxy for actual interaction. With that in mind I'd like to look at the number of reviews a dependent variable as perhaps a closer proxy for how many people are actually visiting the establishment.
+
+```{r}
+g<- ggplot(business_data,aes(x=Business...Review.Count)) +
+  geom_density(alpha=.3,fill="#D32323",color="#D32323")
+ggplotly(g)
+
+```
+```{r}
+g2<-ggplot(business_data,aes(x=Business...Stars)) +
+  geom_histogram(alpha=.3,fill="#D32323",color="#D32323")
+ggplotly(g2)
+```
+## Looking at Number of Reviews
+
+```{r}
+business_reg <- lm(Business...Review.Count~Price.Range + Business...Stars + Business...Wi.Fi+Business...Noise.Level + Price.Range*Business...Wi.Fi+ Business...Good.For.Kids+Business...Has.TV,data=business_data)
+
+summary(business_reg)
+
+```
+
+```{r}
+business_reg <- lm(Business...Review.Count~Price.Range + Business...Stars + Business...Wi.Fi+Business...Noise.Level + Price.Range*Business...Wi.Fi,data=business_data)
+
+summary(business_reg)
+
+```
+
+## Looking at Rating
+
+```{r}
+business_reg <- lm(Business...Stars~Price.Range  + Business...Wi.Fi+Business...Noise.Level,data=business_data)
+
+summary(business_reg)
+
+```
