@@ -94,4 +94,63 @@ plot_model(business_reg)
 
 ## Momentum of Ratings
 > We want to look at the affect a businesses current rating has on it's ability to attract new customers and it's ability to improve it's overall rating. There are definately better ways to do this but for now at each point of time for which we have info we calculate the average rating at that point, the number of reviews the recieve after that point and their average rating after that point.
+```{r}
+temp_data <- data %>%
+    mutate(Review...Date = as.Date(Review...Date, format = "%m/%d/%y"))
+```
+```{r,eval = FALSE}
 
+drops <- c("Business...Good.for.Kids")
+temp_data <- temp_data[ , !(names(temp_data) %in% drops)]
+p<-sqldf("select a.'Business...Stars',a.'Review...Date',a.'Business...Review.Count',
+            (select avg(a.'Review...Stars')
+                               from temp_data b
+                                where b.'Review...Date' <= a.'Review...Date' and b.'Business...Id' = a.'Business...Id') as 'AvgReviewAtDate',
+ (select count(*)
+                               from temp_data b
+                                where b.'Review...Date' >= a.'Review...Date' and b.'Business...Id' = a.'Business...Id') as 'ReviewsAftertDate',
+ (select avg(a.'Review...Stars')
+                               from temp_data b
+                                where b.'Review...Date' > a.'Review...Date' and b.'Business...Id' = a.'Business...Id') as 'AvgReviewAftertDate'
+       from temp_data a
+        group by a.'Business...Stars',a.'Review...Date',a.'Business...Review.Count'")
+
+
+```
+```{r,eval = FALSE}
+head(p)
+```
+```{r,eval = FALSE}
+p$review_cat <- cut(x = p$AvgReviewAtDate, # x is the vector we want to split.
+                  breaks = quantile(p$AvgReviewAtDate, 
+                                    probs = seq(0, 1, .1)), # breaks defines the
+                  # where we want to split it. We use the quantile function to 
+                  # define those splits by equal portions, in this case 20%
+                  include.lowest = T)
+
+``
+```{r,eval = FALSE}
+ggplot(p,aes(x=AvgReviewAftertDate,fill=review_cat,color=review_cat)) + 
+  geom_violin()
+
+``
+```{r,eval = FALSE}
+ggplot(p,aes(x=AvgReviewAftertDate,fill=review_cat,color=review_cat)) + 
+  geom_boxplot()
+
+``
+```{r,eval = FALSE}
+ggplot(p,aes(x=ReviewsAftertDate,fill=review_cat,color=review_cat)) + 
+  geom_boxplot()
+
+``
+```{r,eval = FALSE}
+ggplot(p,aes(x=AvgReviewAtDate,y=ReviewsAftertDate,size=(Business...Review.Count-ReviewsAftertDate))) + 
+  geom_point(alpha=.2,fill="#D32323",color="#D32323")
+
+``
+```{r,eval = FALSE}
+ggplot(p,aes(x=AvgReviewAtDate,y=AvgReviewAftertDate,size=(Business...Review.Count-ReviewsAftertDate))) + 
+  geom_point(alpha=.2,fill="#D32323",color="#D32323")
+
+``
