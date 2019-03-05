@@ -1,12 +1,12 @@
 ---
 output: 
   html_notebook: 
-    toc: yes
+    number_sections: yes
 ---
 <img src="img/yelp-logo.png"></img>
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-list.of.packages <- c('tidyr','plotly','mlbench','caret','ROCR','e1071','ggplot2','dataPreparation')
+list.of.packages <- c('tidyr','plotly','mlbench','caret','ROCR','e1071','ggplot2','dataPreparation','corrplot','sjPlot','sjmisc','sqldf')
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 lapply(list.of.packages, require, character.only=TRUE)
@@ -29,7 +29,8 @@ data<-read.csv("data/yelp_data_reformat.csv")
 ```{r}
 business_data <- data %>%
     select(Business...Id,Business...Stars,Business...Review.Count,Business...Wi.Fi,Business...Waiter.Service,Business...Take.out,Business...Price.Range,Business...Parking,Business...Noise.Level,Business...Good.For.Kids,Business...Accepts.Credit.Cards,Business...Ages.Allowed,Business...Has.TV,Business...Categories) %>%
-    mutate(Price.Range = factor(Business...Price.Range)) %>%
+    mutate(Price.Range = factor(Business...Price.Range),
+           Business...Review.Count = as.numeric(Business...Review.Count)) %>%
     distinct()
 
 
@@ -58,6 +59,7 @@ g2<-ggplot(business_data,aes(x=Business...Stars)) +
   geom_histogram(alpha=.3,fill="#D32323",color="#D32323")
 ggplotly(g2)
 ```
+
 ## Looking at Number of Reviews
 
 ```{r}
@@ -66,14 +68,18 @@ business_reg <- lm(Business...Review.Count~Price.Range + Business...Stars + Busi
 summary(business_reg)
 
 ```
-
+```{r}
+plot_model(business_reg)
+```
 ```{r}
 business_reg <- lm(Business...Review.Count~Price.Range + Business...Stars + Business...Wi.Fi+Business...Noise.Level + Price.Range*Business...Wi.Fi,data=business_data)
 
 summary(business_reg)
 
 ```
-
+```{r}
+plot_model(business_reg)
+```
 ## Looking at Rating
 
 ```{r}
@@ -82,3 +88,10 @@ business_reg <- lm(Business...Stars~Price.Range  + Business...Wi.Fi+Business...N
 summary(business_reg)
 
 ```
+```{r}
+plot_model(business_reg)
+```
+
+## Momentum of Ratings
+> We want to look at the affect a businesses current rating has on it's ability to attract new customers and it's ability to improve it's overall rating. There are definately better ways to do this but for now at each point of time for which we have info we calculate the average rating at that point, the number of reviews the recieve after that point and their average rating after that point.
+
